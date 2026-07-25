@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
 import { Vector3 } from "three";
@@ -61,9 +61,11 @@ function CameraProjector({
 }) {
   const { camera, size } = useThree();
   const vec = useRef(new Vector3());
+  const lastPointsRef = useRef<NodeScreenPoint[]>([]);
 
   useFrame(() => {
     const points: NodeScreenPoint[] = [];
+    let moved = false;
 
     for (const rack of layout) {
       for (let idx = 0; idx < rack.nodes.length; idx++) {
@@ -79,12 +81,22 @@ function CameraProjector({
 
         const x = ((vec.current.x + 1) * size.width) / 2;
         const y = ((-vec.current.y + 1) * size.height) / 2;
-
         const isBehind = vec.current.z > 1;
+
+        const newPos = isBehind ? null : { x, y };
+        const lastPoint = lastPointsRef.current.find((p) => p.node.id === node.id);
+
+        if (!lastPoint || !lastPoint.screenPos || !newPos) {
+          if ((lastPoint?.screenPos === null) !== (newPos === null)) moved = true;
+        } else {
+          const dx = Math.abs(lastPoint.screenPos.x - x);
+          const dy = Math.abs(lastPoint.screenPos.y - y);
+          if (dx > 1.5 || dy > 1.5) moved = true;
+        }
 
         points.push({
           node,
-          screenPos: isBehind ? null : { x, y },
+          screenPos: newPos,
           riskScore: node.id === 102 ? 96 : node.temperature > 80 ? 80 : 15,
           predictedTemp: node.id === 102 ? 94.2 : node.temperature + 2,
           predictedCpu: node.id === 102 ? 98 : node.cpu_usage + 5,
@@ -92,7 +104,10 @@ function CameraProjector({
       }
     }
 
-    onUpdateScreenPoints(points);
+    if (moved || lastPointsRef.current.length !== points.length) {
+      lastPointsRef.current = points;
+      onUpdateScreenPoints(points);
+    }
   });
 
   return null;

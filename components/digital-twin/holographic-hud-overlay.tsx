@@ -64,37 +64,37 @@ function GhostCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onClick}
-      className={`cursor-pointer rounded-xl border p-3 shadow-2xl backdrop-blur-xl transition-all duration-300 w-full max-w-[280px] ${
+      className={`cursor-pointer rounded-xl border p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-200 w-full max-w-[240px] ${
         isHovered
-          ? "border-cyan-400/90 bg-black/90 scale-102 ring-2 ring-cyan-400/40"
+          ? "border-cyan-400/90 bg-black/90 scale-102 ring-2 ring-cyan-400/30"
           : isCritical
             ? "border-rose-500/60 bg-black/80 hover:border-rose-400"
             : "border-white/10 bg-black/75 hover:border-white/20"
       }`}
     >
-      {/* Top Line: Hostname & Risk Badge */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs font-bold uppercase tracking-wider text-foreground truncate">
-          {item.node.hostname}
+      {/* Top Line: Short Hostname & Risk Badge */}
+      <div className="flex items-center justify-between gap-1.5">
+        <span className="font-mono text-xs font-bold uppercase tracking-wide text-foreground truncate">
+          {item.node.hostname.replace("gpu-node-", "")}
         </span>
         <span
           className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold border ${badgeStyle.text} ${badgeStyle.bg} ${badgeStyle.border}`}
         >
-          Risk {item.riskScore}%
+          {item.riskScore}% Risk
         </span>
       </div>
 
-      {/* Metric 2-Column Grid */}
-      <div className="mt-2.5 grid grid-cols-2 gap-2 font-mono text-xs">
-        <div className="rounded-lg border border-white/5 bg-white/5 p-2">
-          <p className="text-[10px] text-muted-foreground">Pred Temp</p>
-          <p className={`font-semibold mt-0.5 ${getRiskBadgeColor(item.predictedTemp > 85 ? 80 : 20).text}`}>
+      {/* Concise 2-Column Metric Grid */}
+      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-xs">
+        <div className="rounded-lg border border-white/5 bg-white/5 px-2 py-1">
+          <p className="text-[9px] text-muted-foreground uppercase font-semibold">Temp</p>
+          <p className={`font-semibold text-xs mt-0.5 ${getRiskBadgeColor(item.predictedTemp > 85 ? 80 : 20).text}`}>
             {item.predictedTemp.toFixed(1)}°C
           </p>
         </div>
-        <div className="rounded-lg border border-white/5 bg-white/5 p-2">
-          <p className="text-[10px] text-muted-foreground">Pred CPU</p>
-          <p className={`font-semibold mt-0.5 ${getRiskBadgeColor(item.predictedCpu > 85 ? 80 : 20).text}`}>
+        <div className="rounded-lg border border-white/5 bg-white/5 px-2 py-1">
+          <p className="text-[9px] text-muted-foreground uppercase font-semibold">CPU</p>
+          <p className={`font-semibold text-xs mt-0.5 ${getRiskBadgeColor(item.predictedCpu > 85 ? 80 : 20).text}`}>
             {item.predictedCpu.toFixed(0)}%
           </p>
         </div>
@@ -125,6 +125,8 @@ export function HolographicHudOverlay({
   // Measure 2D card left-edge anchor coordinates relative to SVG overlay
   useEffect(() => {
     const updated: Record<number, { x: number; y: number }> = {};
+    let hasChange = false;
+
     for (const item of visibleNodes) {
       const el = cardRefs.current[item.node.id];
       if (el) {
@@ -132,14 +134,21 @@ export function HolographicHudOverlay({
         const parentRect = el.offsetParent?.getBoundingClientRect();
 
         if (parentRect) {
-          updated[item.node.id] = {
-            x: rect.left - parentRect.left,
-            y: rect.top - parentRect.top + rect.height / 2,
-          };
+          const x = rect.left - parentRect.left;
+          const y = rect.top - parentRect.top + rect.height / 2;
+          updated[item.node.id] = { x, y };
+
+          const current = cardPositions[item.node.id];
+          if (!current || Math.abs(current.x - x) > 1.5 || Math.abs(current.y - y) > 1.5) {
+            hasChange = true;
+          }
         }
       }
     }
-    setCardPositions(updated);
+
+    if (hasChange || Object.keys(cardPositions).length !== Object.keys(updated).length) {
+      setCardPositions(updated);
+    }
   }, [visibleNodes, containerRect]);
 
   return (
@@ -178,7 +187,7 @@ export function HolographicHudOverlay({
           const isHovered = hoveredNodeId === item.node.id || selectedNodeId === item.node.id;
 
           const strokeColor = isCritical ? "url(#lineGlowRed)" : "url(#lineGlowCyan)";
-          const strokeWidth = isHovered ? 2.4 : 1.2;
+          const strokeWidth = isHovered ? 2.2 : 1.2;
 
           const midX = (nodeX + cardX) / 2;
 
@@ -188,13 +197,13 @@ export function HolographicHudOverlay({
               <circle
                 cx={nodeX}
                 cy={nodeY}
-                r={isHovered ? 5 : 3.5}
+                r={isHovered ? 4.5 : 3}
                 className={isCritical ? "fill-rose-500 animate-ping" : "fill-cyan-400"}
               />
               <circle
                 cx={nodeX}
                 cy={nodeY}
-                r={isHovered ? 3.5 : 2.5}
+                r={isHovered ? 3 : 2}
                 className={isCritical ? "fill-rose-400" : "fill-cyan-300"}
               />
 
@@ -209,14 +218,14 @@ export function HolographicHudOverlay({
               />
 
               {/* Left Edge Anchor Dot on Card */}
-              <circle cx={cardX} cy={cardY} r={3.5} className={isCritical ? "fill-rose-400" : "fill-cyan-400"} />
+              <circle cx={cardX} cy={cardY} r={3} className={isCritical ? "fill-rose-400" : "fill-cyan-400"} />
             </g>
           );
         })}
       </svg>
 
-      {/* Right Perimeter HUD Cards Container (Constrained Flex Column, Z-20) */}
-      <div className="pointer-events-auto absolute top-20 right-4 bottom-20 z-20 flex flex-col gap-4 w-72 max-w-[280px] overflow-y-auto pr-1">
+      {/* Right Perimeter HUD Cards Container */}
+      <div className="pointer-events-auto absolute top-16 right-4 bottom-16 z-20 flex flex-col gap-3 w-64 max-w-[240px] overflow-y-auto pr-1">
         {visibleNodes.map((item) => {
           const isHovered = hoveredNodeId === item.node.id || selectedNodeId === item.node.id;
           const isCritical = item.riskScore > 70;
@@ -244,18 +253,18 @@ export function HolographicHudOverlay({
         {hiddenCount > 0 && !isExpanded && (
           <button
             onClick={() => setIsExpanded(true)}
-            className="cursor-pointer rounded-xl border border-sky-500/40 bg-sky-950/80 p-2.5 text-center text-xs font-mono font-semibold text-sky-300 shadow-xl backdrop-blur-md hover:bg-sky-900/90 transition-all"
+            className="cursor-pointer rounded-xl border border-sky-500/40 bg-sky-950/80 p-2 text-center text-xs font-mono font-semibold text-sky-300 shadow-xl backdrop-blur-md hover:bg-sky-900/90 transition-all"
           >
-            +{hiddenCount} additional ghost anomalies (Click to expand)
+            +{hiddenCount} more anomalies (Expand)
           </button>
         )}
 
         {isExpanded && activeNodes.length > 4 && (
           <button
             onClick={() => setIsExpanded(false)}
-            className="cursor-pointer rounded-xl border border-white/10 bg-black/80 p-2 text-center text-xs font-mono text-muted-foreground shadow-xl backdrop-blur-md hover:text-foreground transition-all"
+            className="cursor-pointer rounded-xl border border-white/10 bg-black/80 p-1.5 text-center text-xs font-mono text-muted-foreground shadow-xl backdrop-blur-md hover:text-foreground transition-all"
           >
-            Collapse list
+            Collapse
           </button>
         )}
       </div>
